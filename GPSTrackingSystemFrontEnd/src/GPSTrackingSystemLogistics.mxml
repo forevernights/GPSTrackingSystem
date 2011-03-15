@@ -1,0 +1,448 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600"
+			   xmlns:myComp="rp.sg.GPSTrackingSystemCustomClass.*"			   
+			   creationComplete="init()" xmlns:components="com.fusioncharts.components.*">
+	<!--source="GPSTrackingSystemLogistics.css"-->
+	<fx:Style>
+		@namespace s "library://ns.adobe.com/flex/spark";
+		@namespace mx "library://ns.adobe.com/flex/halo";
+		@namespace myCom "rp.sg.GPSTrackingSystemCustomClass.*";
+		
+		myCom|CollapsiblePanel {
+			skin-class: ClassReference('rp.sg.GPSTrackingSystemSkins.CollapsiblePanelSkin');
+		}
+	</fx:Style>
+			  
+				 
+	
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+		<s:HTTPService id="retrieveDriverService" resultFormat="text"
+					   url="http://localhost:8080/GPSTrackingSystemGoogle/retrieveAllDriver"
+					   result="onJSONLoadForDriverSerice(event)"
+					   showBusyCursor="true"
+					   />
+		<s:HTTPService id="retrieveRecordService" resultFormat="text"
+					   url="http://localhost:8080/GPSTrackingSystemGoogle/retrieveDeliveryRecord"
+					   result="onJSONLoadForDeliveryService(event)"
+					   showBusyCursor="true"/>
+		<s:HTTPService id="orderInfoService" resultFormat="text"
+					   url="http://localhost:8080/GPSTrackingSystemGoogle/retrieveAllOrder"
+					   result="onJSONLoadForOrderService(event)"
+					   showBusyCursor="true"/>
+		<s:HTTPService id="vehicleInfoService" resultFormat="text"
+					   url="http://localhost:8080/GPSTrackingSystemGoogle/retrieveAllVehicle"
+					   result="onJSONLoadForVehicleService(event)"
+					   showBusyCursor="true"/>		
+		<s:HTTPService id="storeNewDeliveryRecord" resultFormat="text"
+					   url="http://localhost:8080/GPSTrackingSystemGoogle/storeDeliveryRecord"
+					   result="onJSONLoadForStoringNewDeliveryRecord(event)"
+					   showBusyCursor="true"/>
+		<s:HTTPService id="storeNewOrder" resultFormat="text"
+					   url="http://localhost:8080/GPSTrackingSystemGoogle/storeNewOrder"
+					   showBusyCursor="true"/>
+
+	</fx:Declarations>	
+	
+	
+	<mx:Canvas id="mainContainer" width="100%" height="100%" borderStyle="solid" backgroundColor="#FFFFFF" dragEnter="doDragEnter(event);" 
+			   dragDrop="doDragDrop(event);" x="0">	
+		<myComp:CollapsiblePanel height="100%" title="Assign Jobs" >			
+			<myComp:layout>
+				<s:BasicLayout/>
+			</myComp:layout>
+			<s:Label id="lblDriver" width="72" height="27" textAlign="center" verticalAlign="middle" x="47" y="12"/>
+			<mx:Image source="images/Guardia civil uniform_32.png" autoLoad="true" x="9" y="8"/>
+			<mx:Image source="images/Shopcart-Add_32.png" autoLoad="true" x="8" y="98"/>
+			<mx:Image source="images/Car-32x32.png" autoLoad="true" x="8" y="53"/>
+			<s:Label id="lblVehicle" width="73" height="27" textAlign="center" verticalAlign="middle" x="47" y="58"/>
+			<s:Label id="lblOrder" width="71" height="27" textAlign="center" verticalAlign="middle" x="48" y="103"/>
+			<s:Button id="assignJobBtn" click="assignJobBtn_clickHandler(event)" x="8" y="146" label="Assign Work" width="98"/>
+			<s:Label x="0" y="236" text="Lat" width="41" height="27" verticalAlign="middle" textAlign="center"/>
+			<s:Label x="0" y="326" text="Wg" width="41" height="27" verticalAlign="middle" textAlign="center"/>
+			<s:Label x="0" y="296" text="Good" width="41" height="27" verticalAlign="middle" textAlign="center"/>
+			<s:Label x="0" y="266" text="Lng" width="41" height="27" verticalAlign="middle" textAlign="center"/>
+			<s:Label x="9.2" y="194.1" text="Order" width="109" height="27" verticalAlign="middle" textAlign="center" fontWeight="bold" fontFamily="Verdana" fontSize="13"/>
+			<s:Button id="addNewOrder" click="addNewOrderBtn_clickHandler(event)" x="9" y="366" label="New Order" width="99"/>
+			<s:TextInput x="48" y="240" width="59" id="lblLat"/>
+			<s:TextInput x="48" y="330" width="59" id="lblWeight"/>
+			<s:TextInput x="48" y="300" width="59" id="lblName"/>
+			<s:TextInput x="48" y="270" width="59" id="lblLng"/>
+		</myComp:CollapsiblePanel>
+		
+		<myComp:DragPanel  id="driverDragPanel" title="Driver Info"
+						   paddingLeft="10" paddingRight="10" paddingTop="10" paddingBottom="10"
+						   x="185" y="10"
+						   creationComplete="myPanelCCHandler(event);">
+			<mx:DataGrid dataProvider="{driverInfoProvider}"
+						 width="400"
+						 height="400" 
+						 enabled="true" 
+						 id="driverGrid" 						 
+						 verticalAlign="top"						
+						 dragEnabled="true"
+						 change="{selectedDriverGridItemChanged()}">
+				<mx:columns>
+					<mx:DataGridColumn width="150" id="driverIdCol" headerText="Driver Identification" dataField="driverId"/>
+					<mx:DataGridColumn width="250" id="driverNameCol" headerText="Driver Name" dataField="driverName"/>
+					<mx:DataGridColumn width="250" id="driverStatusCol" headerText="Status" dataField="status"/>
+				</mx:columns>
+			</mx:DataGrid>	
+			<mx:Button label="Refresh Service" click="retrieveDriverService.send()"/>			
+		</myComp:DragPanel>
+		<!--second panel-->
+		<myComp:DragPanel  id="deliveryDragPanel" title="Delivery Record Info"
+						   paddingLeft="10" paddingRight="10" paddingTop="10" paddingBottom="10"
+						   x="195" y="40"
+						   creationComplete="myPanelCCHandler(event);">
+			<mx:DataGrid dataProvider="{deliveryInfoProvider}" 
+						 width="400" height="400" 
+						 enabled="true" 
+						 id="deliveryGrid" 						 
+						 verticalAlign="top">
+				<mx:columns>
+					<mx:DataGridColumn width="100" id="recordId" headerText="Delivery Record ID" dataField="id"/>
+					<mx:DataGridColumn width="100" id="driverId" headerText="Driver ID" dataField="driverId"/>
+					<mx:DataGridColumn width="100" id="vehicleId" headerText="Vehicle ID" dataField="vehicleId"/>
+					<mx:DataGridColumn width="100" id="orderListSize" headerText="Number of Orders" dataField="orderListSize"/>
+					<mx:DataGridColumn width="100" id="deliveryStatusCol" headerText="Status" dataField="status"/>
+				</mx:columns>
+			</mx:DataGrid>	
+			<mx:Button label="Refresh Service" click="retrieveRecordService.send()"/>
+		</myComp:DragPanel>
+		<!--third panel-->
+		<myComp:DragPanel  id="orderDragPanel" title="Order Info"
+						   paddingLeft="10" paddingRight="10" paddingTop="10" paddingBottom="10"
+						   x="205" y="70"
+						   creationComplete="myPanelCCHandler(event);">
+			<mx:DataGrid dataProvider="{orderInfoProvider}"
+						 width="400"
+						 height="400" 
+						 enabled="true" 
+						 id="orderGrid" 						 
+						 verticalAlign="top"
+						 change="{selectedOrderGridItemChanged()}">
+				<mx:columns>
+					<mx:DataGridColumn width="150" id="orderIdCol" headerText="Order Identification" dataField="id"/>
+					<mx:DataGridColumn width="150" id="orderSizeCol" headerText="Number of Goods" dataField="goodListSize" />
+					<mx:DataGridColumn width="250" id="orderDropPointCol" headerText="Drop Point Location" dataField="dropPoint"/>
+					<mx:DataGridColumn width="150" id="orderStatusCol" headerText="Status" dataField="status"/>
+				</mx:columns>
+			</mx:DataGrid>	
+			<mx:Button label="Refresh Service" click="orderInfoService.send()"/>			
+		</myComp:DragPanel>
+		<!--fourth panel-->
+		<myComp:DragPanel  id="vehicleDragPanel" title="Vehicle Info"
+						   paddingLeft="10" paddingRight="10" paddingTop="10" paddingBottom="10"
+						   x="215" y="101"
+						   creationComplete="myPanelCCHandler(event);">
+			<mx:DataGrid dataProvider="{vehicleInfoProvider}"
+						 width="400"
+						 height="400" 
+						 enabled="true" 
+						 id="vehicleGrid" 						 
+						 verticalAlign="top"
+						 change="selectedVehcileGridItemChanged()">
+				<mx:columns>
+					<mx:DataGridColumn width="150" id="vehicleIdCol" headerText="Vehicle Identification" dataField="vehicleId"/>
+					<mx:DataGridColumn width="250" id="vehicleCurrentLoc" headerText="Current Location" dataField="currentLocation" />
+					<mx:DataGridColumn width="250" id="vehicleStatus" headerText="Status" dataField="status"/>
+				</mx:columns>
+			</mx:DataGrid>	
+			<mx:Button label="Refresh Service" click="vehicleInfoService.send()"/>			
+		</myComp:DragPanel>
+		<!--fifth panel chart-->
+		<myComp:RubberBandComp id="rbComp" x="0" y="0" height="0" width="0" visible="false"/>		
+		<myComp:DragPanel  id="chartDragPanel" title="Management Chart"
+						   paddingLeft="10" paddingRight="10" paddingTop="10" paddingBottom="10"
+						   x="655.3" y="10.1"
+						   creationComplete="myPanelCCHandler(event);" width="279" height="573">
+			
+			<components:FusionCharts id="colChart" width="263" height="248" FCUseDefaultData="false" FCChartType="Column3D" FCDataURL="http://localhost:8080/GPSTrackingSystemGoogle/retrieveChartData"/>
+			<components:FusionCharts id="pieChart" width="263" height="219" FCUseDefaultData="false" FCChartType="Pie3D" FCDataURL="http://localhost:8080/GPSTrackingSystemGoogle/retrieveChartData"/>
+			<mx:Button label="Refresh Service" click="onLoadXMLFromServer(event)"/>
+		</myComp:DragPanel>
+	</mx:Canvas>
+	
+	
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.serialization.json.JSON;
+			import com.adobe.serialization.json.JSONDecoder;
+			
+			import flash.events.MouseEvent;
+			
+			import mx.collections.ArrayCollection;
+			import mx.containers.Canvas;
+			import mx.containers.Panel;
+			import mx.controls.Alert;
+			import mx.controls.dataGridClasses.DataGridColumn;
+			import mx.core.DragSource;
+			import mx.events.DragEvent;
+			import mx.events.ListEvent;
+			import mx.managers.DragManager;
+			import mx.rpc.events.ResultEvent;
+			import mx.utils.ObjectUtil;
+			
+			import rp.sg.GPSTrackingSystemASEntities.Driver;
+			import rp.sg.GPSTrackingSystemCustomClass.DragPanel;
+			
+			//init app
+			private function init():void{
+				retrieveRecordService.send();
+				retrieveDriverService.send();
+				orderInfoService.send();
+				vehicleInfoService.send();
+				creationCompleteHandler();
+			}
+			
+			//JSON Services
+			[Bindable] private var driverInfoProvider:ArrayCollection = new ArrayCollection;
+			[Bindable] private var deliveryInfoProvider:ArrayCollection = new ArrayCollection;
+			[Bindable] private var orderInfoProvider:ArrayCollection = new ArrayCollection;
+			[Bindable] private var vehicleInfoProvider:ArrayCollection = new ArrayCollection;
+			private function onJSONLoadForDriverSerice(event:ResultEvent):void{
+				var rawData:String = String(event.result);
+				var jsonNode:Object = (JSON.decode(rawData));				
+				for(var i:String in jsonNode["AllDriver"])
+				{
+					driverInfoProvider.addItem(jsonNode["AllDriver"][i]);					
+				}				
+			}
+			private function onJSONLoadForDeliveryService(event:ResultEvent):void{
+				deliveryInfoProvider.removeAll();
+				var rawData:String = String(event.result);
+				var jsonNode:Object = (JSON.decode(rawData));
+				for(var i:String in jsonNode["AllDeliveryRecord"]){
+					deliveryInfoProvider.addItem(jsonNode["AllDeliveryRecord"][i]);
+				}	
+			}
+			private function onJSONLoadForOrderService(event:ResultEvent):void{
+				orderInfoProvider.removeAll();
+				var rawData:String = String(event.result);
+				var jsonNode:Object = (JSON.decode(rawData));
+				var isExisted:Boolean = false;
+				for(var i:String in jsonNode["AllOrder"]){					
+					orderInfoProvider.addItem(jsonNode["AllOrder"][i]);							
+				}	
+			}	
+			private function onJSONLoadForVehicleService(event:ResultEvent):void{
+				vehicleInfoProvider.removeAll();
+				var rawData:String = String(event.result);
+				var jsonNode:Object = (JSON.decode(rawData));
+				for(var i:String in jsonNode["AllVehicle"]){
+					vehicleInfoProvider.addItem(jsonNode["AllVehicle"][i]);
+				}	
+			}	
+			private function onJSONLoadForStoringNewDeliveryRecord(event:ResultEvent):void{
+				var rawData:String = String(event.result);
+				if(rawData == "OK"){
+					
+				}
+				else{
+					Alert.show("Store successfully.","System Message");
+				}
+			}			
+			/*** 
+			**** Customize DragPanel event
+			**** Minimize and Resize event handler for drag panel
+			*/
+			// Define static constant for event type.
+			public static const RESIZE_CLICK:String = "resizeClick";
+			
+			// Creation complete event handler adds the resizing event. 
+			// resizeButtonClicked is a custom event type for this application.
+			protected function creationCompleteHandler():void
+			{
+				addEventListener(RESIZE_CLICK, resizeHandler);
+			}
+			
+			//
+			// D&D event handlers.
+			//
+			
+			// Creation complete handler for each panel to add the 
+			// mouseMove event handler to the title bar. 
+			// Clicking the mouse button, then moving the mouse on the title bar
+			// initiates the d&d operation. 
+			private function myPanelCCHandler(event:Event):void 
+			{
+				event.currentTarget.myTitleBar.addEventListener(MouseEvent.MOUSE_DOWN, tbMouseMoveHandler);
+			}
+			
+			// Variables used to hold the mouse pointer's location in the title bar.
+			// Since the mouse pointer can be anywhere in the title bar, you have to 
+			// compensate for it when you drop the panel. 
+			public var xOff:Number;
+			public var yOff:Number;
+			
+			// Function called by the canvas dragEnter event; enables dropping
+			private function doDragEnter(event:DragEvent):void 
+			{
+				DragManager.acceptDragDrop(Canvas(event.target));
+			}
+			
+			// Drag initiator event handler for
+			// the title bar's mouseMove event.
+			private function tbMouseMoveHandler(event:MouseEvent):void 
+			{
+				var dragInitiator:Panel=Panel(event.currentTarget.parent);
+				var ds:DragSource = new DragSource();
+				ds.addData(event.currentTarget.parent, 'panel'); 
+				
+				// Update the xOff and yOff variables to show the
+				// current mouse location in the Panel.  
+				xOff = event.currentTarget.mouseX;
+				yOff = event.currentTarget.mouseY;
+				
+				// Initiate d&d. 
+				DragManager.doDrag(dragInitiator, ds, event);                    
+			}            
+			
+			// Function called by the Canvas dragDrop event; 
+			// Sets the panel's position, 
+			// "dropping" it in its new location.
+			private function doDragDrop(event:DragEvent):void 
+			{
+				// Compensate for the mouse pointer's location in the title bar.
+				var tempX:int = event.currentTarget.mouseX - xOff;
+				event.dragInitiator.x = tempX;
+				
+				var tempY:int = event.currentTarget.mouseY - yOff;
+				event.dragInitiator.y = tempY;
+				
+				// Put the dragged panel on top of all other components.
+				mainContainer.setChildIndex(Panel(event.dragInitiator), mainContainer.numChildren-1);			
+			}
+			
+			//
+			// Resizing event handlers.
+			//
+			
+			// Save panel being resized.
+			protected var resizingPanel:Panel;
+			// Global coordinates of lower left corner of panel.
+			protected var initX:Number;
+			protected var initY:Number;
+			
+			// Resize area of panel clicked.
+			protected function resizeHandler(event:MouseEvent):void
+			{
+				resizingPanel = Panel(event.target);
+				initX = event.localX;
+				initY = event.localY;
+				
+				// Place the rubber band over the panel. 
+				rbComp.x = event.target.x;
+				rbComp.y = event.target.y;
+				rbComp.height = event.target.height;
+				rbComp.width = event.target.width;
+				
+				// Make sure rubber band is on top of all other components.
+				mainContainer.setChildIndex(rbComp, mainContainer.numChildren-1);
+				rbComp.visible=true;
+				
+				// Add event handlers so that the SystemManager handles 
+				// the mouseMove and mouseUp events. 
+				// Set useCapure flag to true to handle these events 
+				// during the capture phase so no other component tries to handle them.
+				systemManager.addEventListener(MouseEvent.MOUSE_MOVE, mouseMoveHandler, true);
+				systemManager.addEventListener(MouseEvent.MOUSE_UP, mouseUpHandler, true);
+			}
+			
+			// Resizes the rubber band as the user moves the cursor 
+			// with the mouse key down.
+			protected function mouseMoveHandler(event:MouseEvent):void
+			{
+				event.stopImmediatePropagation();		
+				
+				rbComp.height = rbComp.height + event.stageY - initY;  
+				rbComp.width = rbComp.width + event.stageX - initX;
+				
+				initX = event.stageX;
+				initY = event.stageY;						
+			}
+			
+			// Sizes the panel to the size of the rubber band when the 
+			// user releases the mouse key. 
+			// Also removes the event handlers from the SystemManager.
+			protected function mouseUpHandler(event:MouseEvent):void
+			{
+				event.stopImmediatePropagation();		
+				
+				// Use a minimum panel size of 150 x 50.
+				if (rbComp.height <= 50)
+				{
+					resizingPanel.height = 50;  
+				}
+				else
+				{
+					resizingPanel.height = rbComp.height;  				
+				}				
+				
+				if (rbComp.width <= 150)
+				{
+					resizingPanel.width = 150;				
+				}
+				else
+				{
+					resizingPanel.width = rbComp.width;				
+				}				
+				
+				// Put the resized panel on top of all other components.
+				mainContainer.setChildIndex(resizingPanel, mainContainer.numChildren-1);
+				
+				// Hide the rubber band until next time.
+				rbComp.x = 0;
+				rbComp.y = 0;
+				rbComp.height = 0;
+				rbComp.width = 0;
+				rbComp.visible = false;
+				
+				systemManager.removeEventListener(MouseEvent.MOUSE_MOVE, mouseMoveHandler, true);
+				systemManager.removeEventListener(MouseEvent.MOUSE_UP, mouseUpHandler, true	);
+			}		
+
+			//datagrid event handler
+			private function selectedDriverGridItemChanged():void
+			{
+				lblDriver.text = driverGrid.selectedItem.driverId;				
+			}
+			private function selectedOrderGridItemChanged():void{
+				lblOrder.text = orderGrid.selectedItem.id;
+			}
+			private function selectedVehcileGridItemChanged():void{
+				lblVehicle.text = vehicleGrid.selectedItem.vehicleId;
+			}
+			protected function assignJobBtn_clickHandler(event:MouseEvent):void
+			{
+				var params:Object = {};
+				var isAllowed:Boolean = false;
+				params["driverId"] = lblDriver.text;
+				params["vehicleId"] = lblVehicle.text;
+				params["orderId"] = lblOrder.text;
+				if(driverGrid.selectedItem.status=="hired"||lblDriver.text==""||lblVehicle.text==""||vehicleGrid.selectedItem.status=="hired"){
+					Alert.show("Your assignment is invalid.","System message");
+				}
+				else{
+					storeNewDeliveryRecord.send(params);
+				}
+				//
+			}
+			protected function addNewOrderBtn_clickHandler(event:MouseEvent):void{
+				var params:Object = {};
+				params["lat"] = lblLat.text;
+				params["lng"] = lblLng.text;
+				params["name"] = lblName.text;
+				params["weight"] = lblWeight.text;
+				storeNewOrder.send(params);
+				orderInfoService.send();
+			}
+			protected function onLoadXMLFromServer(event:MouseEvent):void{
+				
+			}
+		]]>
+	</fx:Script>
+</s:Application>

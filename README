@@ -1,0 +1,9 @@
+Industrial project with InfoWave which developes:
+The GPS module will allow location data (longitude, latitude and even height co-ordinates) to be sent via GPRS to a back-end server. This information is then displayed using Google Maps. An application needs to be developed on Google App engine to enable this to occur on a near real-time basis. Applications of this type of technology include tracking of the elderly or small children.
+
+Once this is achieved, a complete turn-key software solution can be built to record, track, monitor and direct the delivery personnel to the customer drop-off points.
+
+Developed with:
+- JSP as backend server (JSON, Java)
+- Actionscript 3 as front-end for user interface
+- Flex framework and FusionChart library 

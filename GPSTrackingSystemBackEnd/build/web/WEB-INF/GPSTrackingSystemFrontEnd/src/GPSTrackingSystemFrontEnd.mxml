@@ -1,0 +1,270 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:Application xmlns:fx="http://ns.adobe.com/mxml/2009" 
+			   xmlns:s="library://ns.adobe.com/flex/spark" 
+			   xmlns:mx="library://ns.adobe.com/flex/mx" minWidth="955" minHeight="600"
+			   creationComplete="service.send()" xmlns:maps2="com.google.maps.*">	
+	<fx:Style source="GPSTrackingSystemFrontEnd.css"/>
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+		<s:HTTPService id="service" resultFormat="text"
+						url="http://localhost:8080/GPSTrackingSystemGoogle/locationTracking"
+						result="onJSONLoad(event)"
+						showBusyCursor="true"/>
+		<s:HTTPService id="GPSservice" resultFormat="text"
+					   url="http://localhost:8080/GPSTrackingSystemGoogle/deliverOrder"
+					   result="onGPSServiceLoad(event)"
+					   showBusyCursor="true"/>
+		
+	</fx:Declarations>	
+	<mx:HBox height="100%" width="100%" horizontalAlign="center" verticalAlign="middle">
+		<mx:DataGrid dataProvider="{this.markerDataProvider}" itemClick="showInfo(event)" height="589" >
+			<mx:columns>
+				<mx:DataGridColumn headerText="Vehicle Index" dataField="label"/>
+			</mx:columns>
+		</mx:DataGrid>
+		<mx:Panel title="Driver Info" width="647" height="90% " layout="absolute"
+				  paddingBottom="10" paddingLeft="10" paddingRight="10" paddingTop="10" x="209" y="35" id="mainPanel">		
+			<maps:Map xmlns:maps="com.google.maps.*" id="map"  mapevent_mapready="onMapReady(event)" width="100%" height="100%" key="ABQIAAAAt9nZBNolFKBJ21tLr8QIwRT2yXp_ZAY8_ufC3CFXhHIE1NvwkxQLesMSlUS8MThou0HWA_s64JEiZw" x="0" y="0"/>
+			<mx:Button label="Refresh Service" click="service.send()" x="19" y="526" textAlign="center"/>
+			<mx:Button label="Stimulate" click="onStimulateBtnClick(event)" x="549" y="526" textAlign="center"/>
+			<s:TextInput x="175" y="525" textAlign="center" width="101" id="latInput"/>
+			<s:TextInput x="315" y="525" textAlign="center" width="102" id="lngInput"/>
+			<s:TextInput x="470" y="525" textAlign="center" width="64" id="vehicleIdInput"/>
+			<s:Label x="139" y="526" text="Lat" height="21"  width="33" textAlign="center" verticalAlign="middle"/>
+			<s:Label x="284" y="526" text="Lng" height="21" width="33" textAlign="center" verticalAlign="middle"/>
+			<s:Label x="411" y="526" text="vehicle" height="21" width="62" textAlign="center" verticalAlign="middle"/>
+		</mx:Panel>	  
+	</mx:HBox>
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.serialization.json.JSON;
+			import com.google.maps.InfoWindowOptions;
+			import com.google.maps.LatLng;
+			import com.google.maps.MapMouseEvent;
+			import com.google.maps.MapMoveEvent;
+			import com.google.maps.MapType;
+			import com.google.maps.overlays.Marker;
+			import com.google.maps.overlays.MarkerOptions;
+			import com.google.maps.overlays.Polyline;
+			import com.google.maps.overlays.PolylineOptions;
+			import com.google.maps.services.*;
+			import com.google.maps.services.ClientGeocoder;
+			import com.google.maps.services.Placemark;
+			import com.google.maps.styles.FillStyle;
+			import com.google.maps.styles.StrokeStyle;
+			
+			import flash.events.TimerEvent;
+			import flash.utils.Timer;
+			
+			import flashx.textLayout.formats.Direction;
+			import flashx.textLayout.formats.Float;
+			
+			import mx.collections.ArrayCollection;
+			import mx.collections.ArrayList;
+			import mx.controls.Alert;
+			import mx.events.ListEvent;
+			import mx.rpc.events.ResultEvent;
+			
+			import rp.sg.GPSTrackingSystemASEntities.Vehicle;
+			import rp.sg.GPSTrackingSystemCustomClass.InfoWindowTabbedComponent;
+			
+			//declare global var
+			private var myTimer:Timer;	
+			private var polyData:Object = [
+				{ lat:"1.4399679940455", lng:"103.78843203979" },
+				{ lat:"1.4429679940455", lng:"103.78953203979" },
+				{ lat:"1.4449679940455", lng:"103.79863203979" },
+				{ lat:"1.4469679940455", lng:"103.79903203979" },
+				{ lat:"1.4479679940455", lng:"103.79963203979" },
+				{ lat:"1.4489679940455", lng:"103.8043203979" },
+				{ lat:"1.4399679940455", lng:"103.80933203979" },
+				{ lat:"1.4449679940455", lng:"103.81443203979" }				
+			];
+			[Bindable] private var markerDataProvider:ArrayCollection = new ArrayCollection(); 
+			//
+			
+			//init map
+			private function onMapReady(event:Event):void
+			{
+				this.map.setCenter(new LatLng(1.4399679940455,103.78833203979), 12, MapType.NORMAL_MAP_TYPE);			
+				//map.setCenter(new LatLng(55.194548, 13.1561279296), 7, MapType.NORMAL_MAP_TYPE);			
+				this.map.addEventListener(MapMouseEvent.CLICK,onMapClick);	
+				var myTimer:Timer = new Timer(500, (polyData.length-1));
+				myTimer.addEventListener(TimerEvent.TIMER, timerHandler);
+				//myTimer.start();
+			}
+			
+			//functions
+			private function onMapClick(event:MapMouseEvent):void
+			{
+				latInput.text = String(event.latLng.lat());
+				lngInput.text = String(event.latLng.lng());
+			}
+			private function onMapMove(event:MapMoveEvent):void
+			{
+				this.map.setCenter(new LatLng(1.4399679940455,103.78833203979), 14, MapType.NORMAL_MAP_TYPE);
+			}
+		
+			private function createMarker(latlng:LatLng,content:String,vehicle:Vehicle):Marker {
+				var customInfoWindow:InfoWindowTabbedComponent = new InfoWindowTabbedComponent();
+				customInfoWindow.makeInfoTab(content);
+				customInfoWindow.makeBasisMgmTab("");
+				customInfoWindow.makeDetailsMgmTab("");				
+				var infoMarkerOption:InfoWindowOptions = new InfoWindowOptions({
+					customContent: customInfoWindow,
+					customOffset: new Point(0, 10),
+					width: 300,
+					height: 160,
+					drawDefaultFrame: true
+				});				
+				var marker:Marker = new Marker(latlng);
+				marker.addEventListener(MapMouseEvent.ROLL_OVER, function(e:MapMouseEvent):void {
+					marker.openInfoWindow(infoMarkerOption);				
+				});
+				
+				marker.addEventListener(MapMouseEvent.CLICK,function(e:MapMouseEvent):void{				
+					//handle click event
+					vehicleIdInput.text = String(vehicle.getVehicleId());
+					for(var i:Number = 0;i<dropPointMarkerList.length;i++){
+						var deleteMarker:Marker = dropPointMarkerList.getItemAt(i) as Marker;						
+						map.removeOverlay(deleteMarker);						
+					}					
+					for(var k:Number = 0;k<lineList.length;k++){
+						map.removeOverlay(lineList.getItemAt(k) as Polyline);
+					}
+					var onShowDropPointLatLng:LatLng = vehicle.getCurrentLoc();
+					for(var m:Number = 0;m<vehicle.getDropPointList().length;m++){
+						var polyline:Polyline = new Polyline([
+							vehicle.getDropPointList().getItemAt(m) as LatLng,
+							onShowDropPointLatLng
+						], new PolylineOptions({
+							strokeStyle: new StrokeStyle({
+								color: 0xFF0000,
+								thickness: 4,
+								alpha: 0.7})
+						}));
+						map.addOverlay(polyline);
+						lineList.addItem(polyline);
+						var dropPointMarker:Marker = new Marker(vehicle.getDropPointList().getItemAt(m) as LatLng,new MarkerOptions({fillStyle:new FillStyle({color:0x0000FF})}));
+						dropPointMarker.addEventListener(MapMouseEvent.CLICK, function(event:MapMouseEvent):void {
+							latInput.text = String(event.latLng.lat());
+							lngInput.text = String(event.latLng.lng());
+						});
+						map.addOverlay(dropPointMarker);
+						dropPointMarkerList.addItem(dropPointMarker);
+					}
+					
+				});
+				return marker;
+			}			
+			private function timerHandler(eventArgs:TimerEvent):void {	
+				
+			}
+			private function showInfo(event:ListEvent):void{
+				var marker:Marker = event.itemRenderer.data.marker as Marker;
+				marker.dispatchEvent(new MapMouseEvent(MapMouseEvent.ROLL_OVER,marker,marker.getLatLng(),true,false));
+				marker.dispatchEvent(new MapMouseEvent(MapMouseEvent.CLICK,marker,marker.getLatLng(),true,false));
+			}
+			
+			
+			private var dropPointMarkerList:ArrayList = new ArrayList();
+			private var lineList:ArrayList = new ArrayList();
+			private var markerList:ArrayList = new ArrayList();
+			private function onJSONLoad(event:ResultEvent):void
+			{	
+				//service
+				for(var indexArr:Number = 0; indexArr < markerList.length;indexArr++){
+					var deleteMarker:Marker = markerList.getItemAt(indexArr) as Marker;
+					map.removeOverlay(markerList.getItemAt(indexArr) as Marker);					
+				}
+				for(var deleteLine:Number = 0;deleteLine<lineList.length;deleteLine++){
+					map.removeOverlay(lineList.getItemAt(deleteLine) as Polyline);
+				}
+				
+				//make sure the arraycollection clear first
+				markerDataProvider.removeAll();
+				
+				//raw data of input stream
+				var rawData:String = String(event.result);
+				//serialize data into Json object
+				var jsonNode:Object = JSON.decode(rawData);			
+				//list contains lat and lng of all marker
+				var locationList:ArrayList = new ArrayList();	
+				for(var i:String in jsonNode["TrackingAllVehicleLocation"]){
+					var lat:Number = parseFloat(jsonNode["TrackingAllVehicleLocation"][i]["currentLoc"]["lat"]);
+					var lng:Number = parseFloat(jsonNode["TrackingAllVehicleLocation"][i]["currentLoc"]["lng"]);
+					var vehicleId:Number = parseInt(jsonNode["TrackingAllVehicleLocation"][i]["vehicleId"]);
+					var dropList:ArrayList = new ArrayList();
+					for(var k:String in jsonNode["TrackingAllVehicleLocation"][i]["dropPoint"]){
+						var dropLat:Number = Number(jsonNode["TrackingAllVehicleLocation"][i]["dropPoint"][k]["lat"]);
+						var dropLng:Number = Number(jsonNode["TrackingAllVehicleLocation"][i]["dropPoint"][k]["lng"]);
+						var dropLatLng:LatLng = new LatLng(dropLat,dropLng);
+						dropList.addItem(dropLatLng);										
+					}
+					var newLatLng:LatLng = new LatLng(lat,lng);
+					var newVehicle:Vehicle = new Vehicle(vehicleId,newLatLng,"Test Vehicle",dropList);
+					locationList.addItem(newVehicle);
+				}
+				for(var index:Number = 0;index<locationList.length;index++ ){					
+					var vehicle:Vehicle = (locationList.getItemAt(index) as Vehicle)
+					var vehicleLatLng:LatLng = vehicle.getCurrentLoc();				
+					var tabContent:String = "Vehicle ID: " + vehicle.getVehicleId()
+											+ "<br/>Current Location: " + vehicle.getCurrentLoc()
+											+ "<br/>DropPoint: " + vehicle.getDropPointList();
+					var newMarker:Marker = this.createMarker(vehicleLatLng,tabContent,vehicle);					
+					var label:String = "Vehicle " + vehicle.getVehicleId();					
+					markerDataProvider.addItem({label: label, marker: newMarker});
+					map.addOverlay(newMarker);				
+					markerList.addItem(newMarker);
+				}								
+			}
+			private function onShowDropPoint(vehicle:Vehicle):void{
+				var onShowDropPointLatLng:LatLng = vehicle.getCurrentLoc();
+				for(var m:Number = 0;m<vehicle.getDropPointList().length;m++){
+					var polyline:Polyline = new Polyline([
+						vehicle.getDropPointList().getItemAt(m) as LatLng,
+						onShowDropPointLatLng
+					], new PolylineOptions({
+						strokeStyle: new StrokeStyle({
+							color: 0xFF0000,
+							thickness: 4,
+							alpha: 0.7})
+					}));
+					map.addOverlay(polyline);
+					map.addOverlay(new Marker(vehicle.getDropPointList().getItemAt(m) as LatLng,new MarkerOptions({fillStyle:new FillStyle({color:0x0000FF})})));
+				}
+			}
+			private function reverseLocation(latlng:LatLng):String{
+				var geocoder:ClientGeocoder = new ClientGeocoder();
+				var placemarks:Array;
+				var address:String = "";
+				geocoder.reverseGeocode(latlng);
+				geocoder.addEventListener(GeocodingEvent.GEOCODING_SUCCESS,
+					function(event:GeocodingEvent):void {
+						placemarks = event.response.placemarks;
+						if (placemarks.length > 0) {
+							address = placemarks[0].address;
+						}
+					});
+				return placemarks[0].address;
+			}
+			private function onStimulateBtnClick(event:MouseEvent):void{
+				var params:Object = {};
+				params["idVehicle"] = vehicleIdInput.text;
+				params["lat"] = latInput.text;
+				params["lng"] = lngInput.text;				
+				GPSservice.send(params);				
+			}
+			private function onGPSServiceLoad(event:ResultEvent):void{				
+				if(event.result as String == "DELIVERED"){
+					Alert.show("Order delivered","System message");					
+				}		
+				else{
+					Alert.show("Vehicle reaches new point","System message");					
+				}
+				service.send();
+			}
+		]]>
+	</fx:Script>	
+	
+</s:Application>

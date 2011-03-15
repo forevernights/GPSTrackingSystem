@@ -1,0 +1,9 @@
+<chart caption='Half Yearly Sales Summary' subcaption='For the year 2008 - First Half'
+   xAxisName='Month' yAxisName='Sales' numberPrefix='$'>  
+        <set label='Jan' value='17400' />  
+        <set label='Feb' value='19800' />  
+        <set label='Mar' value='21800' />  
+        <set label='Apr' value='23000' />  
+        <set label='May' value='29000' />  
+        <set label='June' value='27600' />
+</chart>
